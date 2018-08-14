@@ -7,6 +7,7 @@ import com.stealthcopter.networktools.ping.PingTools;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created by mat on 09/12/15.
@@ -39,6 +40,7 @@ public class Ping {
     private int delayBetweenScansMillis = 0;
     private int times = 1;
     private boolean cancelled = false;
+    private ExecutorService executorService;
 
     /**
      * Set the address to ping
@@ -116,6 +118,17 @@ public class Ping {
         return this;
     }
 
+    /**
+     * Set an executor service to control thread execution
+     *
+     * @param executorService executor service reference
+     * @return
+     */
+    public Ping setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+        return this;
+    }
+
     private void setAddress(InetAddress address) {
         this.address = address;
     }
@@ -170,7 +183,7 @@ public class Ping {
      */
     public Ping doPing(final PingListener pingListener) {
 
-        new Thread(new Runnable() {
+        Runnable task = new Runnable() {
             @Override
             public void run() {
 
@@ -229,7 +242,12 @@ public class Ping {
                     pingListener.onFinished(new PingStats(address, pingsCompleted, noLostPackets, totalPingTime, minPingTime, maxPingTime));
                 }
             }
-        }).start();
+        };
+        if (executorService != null) {
+            executorService.execute(task);
+        } else {
+            new Thread(task).start();
+        }
         return this;
     }
 
