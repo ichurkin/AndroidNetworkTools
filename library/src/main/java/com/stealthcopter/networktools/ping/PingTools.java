@@ -8,6 +8,8 @@ import java.net.InetAddress;
  */
 public class PingTools {
 
+    private static volatile boolean doNativePingFirst = true;
+
     // This class is not to be instantiated
     private PingTools() {
     }
@@ -17,35 +19,39 @@ public class PingTools {
      * Perform a ping using the native ping tool and fall back to using java echo request
      * on failure.
      *
-     * @param ia            - address to ping
-     * @param pingOptions   - ping command options
+     * @param ia          - address to ping
+     * @param pingOptions - ping command options
      * @return - the ping results
      */
     public static PingResult doPing(InetAddress ia, PingOptions pingOptions) {
-
-        // Try native ping first
-        try {
-            return PingTools.doNativePing(ia, pingOptions);
-        } catch (InterruptedException e) {
-            PingResult pingResult = new PingResult(ia);
-            pingResult.isReachable = false;
-            pingResult.error = "Interrupted";
-            return pingResult;
-        } catch (Exception ignored) {
+        if (doNativePingFirst) {
+            // Try native ping first
+            PingResult result = doNativePingAndProcessErrors(ia, pingOptions);
+            if (result != null) {
+                return result;
+            }
+            doNativePingFirst = false;
+            return PingTools.doJavaPing(ia, pingOptions);
+        } else {
+            // Try java ping first
+            PingResult pingResult = PingTools.doJavaPing(ia, pingOptions);
+            //switch back to native if its not reachable
+            if (pingResult.isReachable()) {
+                return pingResult;
+            }
+            doNativePingFirst = true;
+            return doPing(ia, pingOptions);
         }
-
-        // Fallback to java based ping
-        return PingTools.doJavaPing(ia, pingOptions);
     }
 
 
     /**
      * Perform a ping using the native ping binary
      *
-     * @param ia            - address to ping
-     * @param pingOptions   - ping command options
+     * @param ia          - address to ping
+     * @param pingOptions - ping command options
      * @return - the ping results
-     * @throws IOException - IO error running ping command
+     * @throws IOException          - IO error running ping command
      * @throws InterruptedException - thread interrupt
      */
     public static PingResult doNativePing(InetAddress ia, PingOptions pingOptions) throws IOException, InterruptedException {
@@ -57,8 +63,8 @@ public class PingTools {
      * ICMP <i>(ICMP ECHO REQUEST)</i>, falling back to a TCP connection
      * on port 7 (Echo) of the remote host.
      *
-     * @param ia            - address to ping
-     * @param pingOptions   - ping command options
+     * @param ia          - address to ping
+     * @param pingOptions - ping command options
      * @return - the ping results
      */
     public static PingResult doJavaPing(InetAddress ia, PingOptions pingOptions) {
@@ -82,4 +88,24 @@ public class PingTools {
         return pingResult;
     }
 
+    /**
+     * Perform a ping using the native ping tool and process exceptions
+     *
+     * @param ia          - address to ping
+     * @param pingOptions - ping command options
+     * @return - the ping results or null
+     */
+    private static PingResult doNativePingAndProcessErrors(InetAddress ia, PingOptions pingOptions) {
+        // Try native ping
+        try {
+            return PingTools.doNativePing(ia, pingOptions);
+        } catch (InterruptedException e) {
+            PingResult pingResult = new PingResult(ia);
+            pingResult.isReachable = false;
+            pingResult.error = "Interrupted";
+            return pingResult;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
 }
