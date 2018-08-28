@@ -58,7 +58,11 @@ public class PingNative {
                 while ((line = buffer.readLine()) != null) {
                     echo.append(line).append("\n");
                 }
-                return getPingStats(pingResult, echo.toString());
+                String echoString = echo.toString();
+                if (echoString.contains("wrong data byte")) {
+                    throw new IOException("wrong data byte");
+                }
+                return getPingStats(pingResult, echoString);
             case 1:
                 pingError = "failed, exit = 1";
                 break;
@@ -72,37 +76,36 @@ public class PingNative {
 
     /**
      * getPingStats interprets the text result of a Linux activity_ping command
-     *
+     * <p>
      * Set pingError on error and return null
-     *
+     * <p>
      * http://en.wikipedia.org/wiki/Ping
-     *
+     * <p>
      * PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
      * 64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.251 ms
      * 64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.294 ms
      * 64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=0.295 ms
      * 64 bytes from 127.0.0.1: icmp_seq=4 ttl=64 time=0.300 ms
-     *
+     * <p>
      * --- 127.0.0.1 activity_ping statistics ---
      * 4 packets transmitted, 4 received, 0% packet loss, time 0ms
      * rtt min/avg/max/mdev = 0.251/0.285/0.300/0.019 ms
-     *
+     * <p>
      * PING 192.168.0.2 (192.168.0.2) 56(84) bytes of data.
-     *
+     * <p>
      * --- 192.168.0.2 activity_ping statistics ---
      * 1 packets transmitted, 0 received, 100% packet loss, time 0ms
-     *
+     * <p>
      * # activity_ping 321321.
      * activity_ping: unknown host 321321.
-     *
+     * <p>
      * 1. Check if output contains 0% packet loss : Branch to success - Get stats
      * 2. Check if output contains 100% packet loss : Branch to fail - No stats
      * 3. Check if output contains 25% packet loss : Branch to partial success - Get stats
      * 4. Check if output contains "unknown host"
      *
      * @param pingResult - the current ping result
-     * @param s - result from ping command
-     *
+     * @param s          - result from ping command
      * @return The ping result
      */
     public static PingResult getPingStats(PingResult pingResult, String s) {
