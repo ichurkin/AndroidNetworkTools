@@ -78,8 +78,7 @@ public class PingTools {
         try {
             long startTime = System.nanoTime();
             final boolean reached = ia.isReachable(null, pingOptions.getTimeToLive(), pingOptions.getTimeoutMillis());
-            //error /1e6f - nano to seconds = 1e9f
-            pingResult.timeTaken = (System.nanoTime() - startTime) / 1e9f;
+            pingResult.timeTaken = (System.nanoTime() - startTime) / 1e6f;
             pingResult.isReachable = reached;
             if (!reached) pingResult.error = "Timed Out";
         } catch (IOException e) {
