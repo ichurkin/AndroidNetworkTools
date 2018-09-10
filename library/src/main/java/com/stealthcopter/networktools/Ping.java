@@ -7,6 +7,9 @@ import com.stealthcopter.networktools.ping.PingTools;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -30,7 +33,9 @@ public class Ping {
 
     public interface PingListener {
         void onResult(PingResult pingResult);
+
         void onFinished(PingStats pingStats);
+
         void onError(Exception e);
     }
 
@@ -44,7 +49,7 @@ public class Ping {
 
     /**
      * Set the address to ping
-     *
+     * <p>
      * Note that a lookup is not performed here so that we do not accidentally perform a network
      * request on the UI thread.
      *
@@ -162,7 +167,7 @@ public class Ping {
 
     /**
      * Perform a synchronous ping and return a result, will ignore number of times.
-     *
+     * <p>
      * Note that this should be performed on a background thread as it will perform a network
      * request
      *
@@ -208,6 +213,9 @@ public class Ping {
                 cancelled = false;
                 int noPings = times;
 
+                //to calculate median value
+                List<Float> successfulPings = new ArrayList<>();
+
                 // times == 0 is the case that we can continuous scanning
                 while (noPings > 0 || times == 0) {
                     PingResult pingResult = PingTools.doPing(address, pingOptions);
@@ -224,6 +232,7 @@ public class Ping {
                     } else {
                         float timeTaken = pingResult.getTimeTaken();
                         totalPingTime += timeTaken;
+                        successfulPings.add(timeTaken);
                         if (maxPingTime == -1 || timeTaken > maxPingTime) maxPingTime = timeTaken;
                         if (minPingTime == -1 || timeTaken < minPingTime) minPingTime = timeTaken;
                     }
@@ -239,7 +248,12 @@ public class Ping {
                 }
 
                 if (pingListener != null) {
-                    pingListener.onFinished(new PingStats(address, pingsCompleted, noLostPackets, totalPingTime, minPingTime, maxPingTime));
+                    float medianPing = -1;
+                    if (successfulPings.size() > 0) {
+                        Collections.sort(successfulPings);
+                        medianPing = successfulPings.get((successfulPings.size() - 1) / 2);
+                    }
+                    pingListener.onFinished(new PingStats(address, pingsCompleted, noLostPackets, totalPingTime, minPingTime, maxPingTime, medianPing));
                 }
             }
         };
