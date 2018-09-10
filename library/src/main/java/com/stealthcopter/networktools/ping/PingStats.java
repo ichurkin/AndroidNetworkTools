@@ -18,10 +18,11 @@ public class PingStats {
         this.ia = ia;
         this.noPings = noPings;
         this.packetsLost = packetsLost;
-        this.averageTimeTaken = totalTimeTaken / noPings;
+        long packetsDelivered = noPings - packetsLost;
+        this.isReachable = packetsDelivered > 0;
+        this.averageTimeTaken = (this.isReachable ? totalTimeTaken / packetsDelivered : -1);
         this.minTimeTaken = minTimeTaken;
         this.maxTimeTaken = maxTimeTaken;
-        this.isReachable = noPings - packetsLost > 0;
     }
 
     public InetAddress getAddress() {
