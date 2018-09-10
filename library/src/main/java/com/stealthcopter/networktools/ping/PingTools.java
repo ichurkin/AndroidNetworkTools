@@ -8,7 +8,7 @@ import java.net.InetAddress;
  */
 public class PingTools {
 
-    private static volatile boolean doNativePingFirst = true;
+    public static volatile boolean doNativePingFirst = true;
 
     // This class is not to be instantiated
     private PingTools() {
@@ -33,14 +33,13 @@ public class PingTools {
             doNativePingFirst = false;
             return PingTools.doJavaPing(ia, pingOptions);
         } else {
-            // Try java ping first
+            // Try java ping
             PingResult pingResult = PingTools.doJavaPing(ia, pingOptions);
-            //switch back to native if its not reachable
             if (pingResult.isReachable()) {
                 return pingResult;
             }
-            doNativePingFirst = true;
-            return doPing(ia, pingOptions);
+            //fallback to native
+            return doNativePingAndProcessErrors(ia, pingOptions);
         }
     }
 
